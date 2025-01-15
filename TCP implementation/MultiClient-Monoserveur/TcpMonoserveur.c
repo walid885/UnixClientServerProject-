@@ -12,6 +12,18 @@
 #define PORT 8080
 #define MAX_CLIENTS 10
 #define BUFFER_SIZE 1024
+#define NUM_VALID_USERS (sizeof(valid_users) / sizeof(user_credentials_t))
+
+typedef struct {
+    char username[50];
+    char password[50];
+} user_credentials_t;
+
+user_credentials_t valid_users[] = {
+    {"admin", "admin"},
+    {"usr1", "usr1"},
+    {"usr2", "usr2"}
+};
 
 typedef struct {
     int sock;
@@ -58,24 +70,43 @@ void read_file(char *buffer, const char *filename) {
 int authenticate(char *credentials) {
     char username[50], password[50];
     sscanf(credentials, "%s %s", username, password);
-    return (strcmp(username, "admin") == 0 && strcmp(password, "admin") == 0);
+    
+    for (size_t i = 0; i < NUM_VALID_USERS; i++) {
+        if (strcmp(username, valid_users[i].username) == 0 && 
+            strcmp(password, valid_users[i].password) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+
+const char* get_username(char *credentials) {
+    static char username[50];
+    sscanf(credentials, "%s", username);
+    return username;
 }
 
 void *handle_client(void *arg) {
     client_t *client = (client_t *)arg;
     char buffer[BUFFER_SIZE];
     int read_size;
+    char username[50] = {0};  // Store username for logging
 
     pthread_mutex_lock(&clients_mutex);
     client_count++;
-    printf("New client connected. Total clients: %d\n", client_count);
+    printf("New connection attempt. Total clients: %d\n", client_count);
     pthread_mutex_unlock(&clients_mutex);
 
     // Authentication
     read_size = recv(client->sock, buffer, BUFFER_SIZE, 0);
     buffer[read_size] = '\0';
 
+    // Extract username before authentication
+    sscanf(buffer, "%s", username);
+
     if (!authenticate(buffer)) {
+        printf("Authentication failed for user: %s\n", username);
         send(client->sock, "Authentication failed", 20, 0);
         close(client->sock);
         pthread_mutex_lock(&clients_mutex);
@@ -85,42 +116,56 @@ void *handle_client(void *arg) {
         return NULL;
     }
 
+    printf("User %s successfully authenticated\n", username);
     send(client->sock, "Authentication successful", 23, 0);
     client->connection_time = time(NULL);
 
+    // Service handling loop
     while ((read_size = recv(client->sock, buffer, BUFFER_SIZE, 0)) > 0) {
         buffer[read_size] = '\0';
-
+        
+        printf("User %s requested service: ", username);
+        
         if (strcmp(buffer, "1") == 0) {
+            printf("Get Time\n");
             get_time(buffer);
         }
         else if (strcmp(buffer, "2") == 0) {
+            printf("List Directory\n");
             list_directory(buffer);
         }
         else if (strcmp(buffer, "3") == 0) {
+            // Get filename
             recv(client->sock, buffer, BUFFER_SIZE, 0);
+            printf("Read File: %s\n", buffer);
             read_file(buffer, buffer);
         }
         else if (strcmp(buffer, "4") == 0) {
+            printf("Connection Duration\n");
             time_t now = time(NULL);
             sprintf(buffer, "Connection duration: %ld seconds\n", now - client->connection_time);
         }
         else if (strcmp(buffer, "5") == 0) {
+            printf("Disconnect Request\n");
             break;
+        }
+        else {
+            printf("Invalid Service Request: %s\n", buffer);
+            strcpy(buffer, "Invalid service request");
         }
 
         send(client->sock, buffer, strlen(buffer), 0);
     }
 
+    // Cleanup and disconnect
     close(client->sock);
     pthread_mutex_lock(&clients_mutex);
     client_count--;
-    printf("Client disconnected. Total clients: %d\n", client_count);
+    printf("User %s disconnected. Total clients: %d\n", username, client_count);
     pthread_mutex_unlock(&clients_mutex);
     free(client);
     return NULL;
 }
-
 int main() {
     int server_fd;
     struct sockaddr_in address;

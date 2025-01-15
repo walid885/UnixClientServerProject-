@@ -55,13 +55,15 @@ run_client_test() {
     local test_num=$1
     local service_num=$2
     local delay=$3
+    local username=$4
+    local password=$5
     
     expect << EOF &
 spawn ./client
 expect "Username: "
-send "admin\r"
+send "$username\r"
 expect "Password: "
-send "admin\r"
+send "$password\r"
 expect "Choose"
 sleep $delay
 send "$service_num\r"
@@ -71,19 +73,16 @@ expect eof
 EOF
 }
 
-# Start multiple client tests simultaneously
-print_header "Starting Multiple Client Tests"
+# In the main test section, replace the client launches with:
+print_status "Launching client 1 (Time Service) - Admin"
+run_client_test 1 1 2 "admin" "admin"
 
-print_status "Launching client 1 (Time Service)"
-run_client_test 1 1 2
+print_status "Launching client 2 (Directory Listing) - User 1"
+run_client_test 2 2 3 "usr1" "usr1"
 
-print_status "Launching client 2 (Directory Listing)"
-run_client_test 2 2 3
+print_status "Launching client 3 (Connection Duration) - User 2"
+run_client_test 3 4 4 "usr2" "usr2"
 
-print_status "Launching client 3 (Connection Duration)"
-run_client_test 3 4 4
-
-# Wait for all clients to finish
 sleep 10
 
 # Cleanup
