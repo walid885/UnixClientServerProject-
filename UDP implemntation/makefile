@@ -3,13 +3,13 @@ CC = gcc
 CFLAGS = -Wall
 
 # Target executables
-all: clientUDP serveurUDP
+all: UdpClient UdpServer
 
-clientUDP: clientUDP.c
-	$(CC) $(CFLAGS) -o clientUDP clientUDP.c
+clientUDP: UdpClient.c
+	$(CC) $(CFLAGS) -o clientUDP UdpClient.c
 
-serveurUDP: serveurUDP.c
-	$(CC) $(CFLAGS) -o serveurUDP serveurUDP.c
+serveurUDP: UdpServer.c
+	$(CC) $(CFLAGS) -o serveurUDP UdpServer.c
 
 clean:
 	rm -f clientUDP serveurUDP
