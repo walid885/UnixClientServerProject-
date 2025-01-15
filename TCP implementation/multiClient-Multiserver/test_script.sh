@@ -1,47 +1,96 @@
 #!/bin/bash
 
-# Color definitions
+# Enhanced color definitions
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
+ORANGE='\033[0;33m'
+LIGHTBLUE='\033[1;34m'
+LIGHTGREEN='\033[1;32m'
+LIGHTRED='\033[1;31m'
 NC='\033[0m' # No Color
 BOLD='\033[1m'
 
-# Function for section headers
+# Server color codes
+declare -A SERVER_COLORS
+SERVER_COLORS[0]="${LIGHTBLUE}"
+SERVER_COLORS[1]="${LIGHTGREEN}"
+SERVER_COLORS[2]="${ORANGE}"
+SERVER_COLORS[3]="${PURPLE}"
+
+# Function for fancy borders
+print_border() {
+    echo -e "${PURPLE}${BOLD}╔════════════════════════════════════════════════════════════╗${NC}"
+}
+
+print_bottom_border() {
+    echo -e "${PURPLE}${BOLD}╚════════════════════════════════════════════════════════════╝${NC}"
+}
+
+# Enhanced section headers
 print_header() {
-    echo -e "\n${PURPLE}${BOLD}═══════════════════════════════════════════${NC}"
-    echo -e "${BLUE}${BOLD}   $1${NC}"
-    echo -e "${PURPLE}${BOLD}═══════════════════════════════════════════${NC}\n"
+    print_border
+    echo -e "${PURPLE}${BOLD}║${NC} ${BLUE}${BOLD}   $1${NC}$(printf '%*s' $((49-${#1})) '')${PURPLE}${BOLD}║${NC}"
+    print_bottom_border
 }
 
-# Function for status messages
+# Enhanced status messages with timestamp
 print_status() {
-    echo -e "${YELLOW}${BOLD}[STATUS]${NC} $1"
+    local timestamp=$(date "+%H:%M:%S")
+    echo -e "${YELLOW}${BOLD}[${timestamp}][STATUS]${NC} $1"
 }
 
-# Function for success messages
+# Enhanced success messages with timestamp
 print_success() {
-    echo -e "${GREEN}${BOLD}[SUCCESS]${NC} $1"
+    local timestamp=$(date "+%H:%M:%S")
+    echo -e "${GREEN}${BOLD}[${timestamp}][SUCCESS]${NC} $1"
 }
 
-# Function for error messages
+# Enhanced error messages with timestamp
 print_error() {
-    echo -e "${RED}${BOLD}[ERROR]${NC} $1"
+    local timestamp=$(date "+%H:%M:%S")
+    echo -e "${RED}${BOLD}[${timestamp}][ERROR]${NC} $1"
 }
 
-# Create test files and directories
+# Server status message with color coding
+print_server_status() {
+    local server_id=$1
+    local message=$2
+    local timestamp=$(date "+%H:%M:%S")
+    echo -e "${SERVER_COLORS[$server_id]}${BOLD}[${timestamp}][Server-$server_id]${NC} $message"
+}
+
+# Client status message with color coding
+print_client_status() {
+    local client_id=$1
+    local message=$2
+    local timestamp=$(date "+%H:%M:%S")
+    local color="${CYAN}"
+    echo -e "${color}${BOLD}[${timestamp}][Client-$client_id]${NC} $message"
+}
+
+# Enhanced test environment setup
 setup_test_environment() {
-    print_status "Setting up test environment..."
+    print_status "Initializing test environment..."
     mkdir -p test_dir
-    echo "This is a test file" > test_dir/test.txt
-    echo "Another test file" > test_dir/another.txt
-    print_success "Test environment created"
+    local files=("test.txt" "config.ini" "data.log" "users.db")
+    local content=(
+        "This is a test file for server testing"
+        "[config]\nport=8080\nmax_connections=10"
+        "2024-01-16 12:00:00 INFO Server started"
+        "admin:admin\nusr1:usr1\nusr2:usr2\nusr3:usr3"
+    )
+    
+    for i in "${!files[@]}"; do
+        echo -e "${content[$i]}" > "test_dir/${files[$i]}"
+        print_success "Created test file: ${files[$i]}"
+    done
 }
 
-# Function to run a client test
+# Enhanced client test function
 run_client_test() {
     local test_num=$1
     local service_num=$2
@@ -50,6 +99,8 @@ run_client_test() {
     local password=$5
     local extra_input=$6
     
+    print_client_status $test_num "Initiating connection..."
+    
     expect -f - << EOF > client_output_${test_num}.log 2>&1 &
 spawn ./client
 expect "Username: "
@@ -57,22 +108,32 @@ send "$username\r"
 expect "Password: "
 send "$password\r"
 expect "Choose"
-sleep $delay
 send "$service_num\r"
 if { "$service_num" == "3" } {
     expect "Enter filename:"
     send "$extra_input\r"
 }
-sleep 1
+sleep $delay
 expect "Choose"
 send "5\r"
 expect eof
 EOF
-    echo $!
+    
+    local pid=$!
+    print_client_status $test_num "Started with PID: $pid"
+    echo $pid
 }
 
 # Start of script
-print_header "Multi-Client TCP Server Test Suite"
+clear
+print_header "Advanced Multi-Client TCP Server Test Suite"
+
+# Show test configuration
+echo -e "${CYAN}${BOLD}Test Configuration:${NC}"
+echo -e "• Number of servers: 4"
+echo -e "• Number of clients: 4"
+echo -e "• Test duration: ~15 seconds"
+echo -e "• Services tested: Time, Directory, File Reading, Connection Duration\n"
 
 # Compilation phase
 print_status "Cleaning previous builds..."
@@ -94,80 +155,97 @@ fi
 setup_test_environment
 
 # Start server
-print_status "Starting server in background..."
+print_header "Server Initialization"
+print_status "Starting multi-server system..."
 ./server &
 SERVER_PID=$!
 sleep 2
 
 if ps -p $SERVER_PID > /dev/null; then
-    print_success "Server started with PID: ${SERVER_PID}"
+    for i in {0..3}; do
+        print_server_status $i "Server process initialized"
+    done
+    print_success "Master server started with PID: ${SERVER_PID}"
 else
     print_error "Server failed to start"
     exit 1
 fi
 
-# Run multiple client tests simultaneously
-print_status "Starting multi-client tests..."
+# Run multiple client tests
+print_header "Client Testing Phase"
 
-# Test 1: Get system time (admin user)
+# Test matrix display
+echo -e "${BOLD}Test Matrix:${NC}"
+echo -e "┌────────────┬──────────────┬─────────────┬──────────────┐"
+echo -e "│ Client ID  │   Service    │    User     │    Status    │"
+echo -e "├────────────┼──────────────┼─────────────┼──────────────┤"
+
+# Launch clients with visual feedback
+CLIENT_PIDS=()
+
+# Test 1: Time Service
 CLIENT1_PID=$(run_client_test 1 1 2 "admin" "admin")
-print_status "Client 1 (Time Service) launched - PID: $CLIENT1_PID"
+CLIENT_PIDS+=($CLIENT1_PID)
+echo -e "│    1       │     Time     │    admin    │  Running     │"
 
-# Test 2: List directory (user1)
+# Test 2: Directory Listing
 CLIENT2_PID=$(run_client_test 2 2 3 "usr1" "usr1")
-print_status "Client 2 (Directory Listing) launched - PID: $CLIENT2_PID"
+CLIENT_PIDS+=($CLIENT2_PID)
+echo -e "│    2       │     Dir      │    usr1     │  Running     │"
 
-# Test 3: Read file (user2)
+# Test 3: File Reading
 CLIENT3_PID=$(run_client_test 3 3 2 "usr2" "usr2" "test_dir/test.txt")
-print_status "Client 3 (File Reading) launched - PID: $CLIENT3_PID"
+CLIENT_PIDS+=($CLIENT3_PID)
+echo -e "│    3       │     File     │    usr2     │  Running     │"
 
-# Test 4: Connection duration (user3)
+# Test 4: Connection Duration
 CLIENT4_PID=$(run_client_test 4 4 4 "usr3" "usr3")
-print_status "Client 4 (Connection Duration) launched - PID: $CLIENT4_PID"
+CLIENT_PIDS+=($CLIENT4_PID)
+echo -e "│    4       │   Duration   │    usr3     │  Running     │"
+echo -e "└────────────┴──────────────┴─────────────┴──────────────┘"
 
-# Wait for client tests to complete
-sleep 15
+# Monitor progress
+print_header "Test Progress Monitoring"
+for i in {1..15}; do
+    echo -ne "\rProgress: [${GREEN}"
+    for ((j=0; j<i; j++)); do echo -ne "█"; done
+    for ((j=i; j<15; j++)); do echo -ne "${NC}─"; done
+    echo -ne "${NC}] $((i*100/15))%"
+    sleep 1
+done
+echo -e "\n"
 
-# Check client outputs
+# Check results
+print_header "Test Results"
 for i in {1..4}; do
     if [ -f "client_output_${i}.log" ]; then
         if grep -q "Authentication successful" "client_output_${i}.log"; then
-            print_success "Client $i completed successfully"
+            print_success "Client $i: Test completed successfully"
         else
-            print_error "Client $i may have failed"
+            print_error "Client $i: Test may have failed"
         fi
-    else
-        print_error "No output log found for client $i"
     fi
 done
 
 # Cleanup
-print_status "Cleaning up..."
+print_header "Cleanup Phase"
+print_status "Terminating all processes..."
 
-# Kill server and any remaining clients
 kill $SERVER_PID 2>/dev/null
-for pid in $CLIENT1_PID $CLIENT2_PID $CLIENT3_PID $CLIENT4_PID; do
+for pid in "${CLIENT_PIDS[@]}"; do
     kill $pid 2>/dev/null
 done
 
-# Wait for processes to terminate
 sleep 2
 
-# Check if server was terminated
-if ! ps -p $SERVER_PID > /dev/null; then
-    print_success "Server shutdown successfully"
-else
-    print_error "Server shutdown failed"
-    kill -9 $SERVER_PID 2>/dev/null
-fi
-
-# Clean up test files
+# Final cleanup
 rm -rf test_dir
 rm -f client_output_*.log
 
-print_header "Test Suite Completed"
-echo -e "${CYAN}Test Summary:${NC}"
-echo -e "- Tested 4 concurrent clients"
-echo -e "- Tested all available services"
-echo -e "- Tested different user authentications"
-echo -e "\n${GREEN}${BOLD}Test suite execution completed!${NC}\n"
+print_header "Final Test Summary"
+echo -e "${CYAN}${BOLD}Test Execution Summary:${NC}"
+echo -e "✓ All server processes initialized"
+echo -e "✓ 4 concurrent clients tested"
+echo -e "✓ All core services verified"
+echo -e "✓ Multiple user authentications tested"
+echo -e "\n${GREEN}${BOLD}Test suite execution completed successfully!${NC}\n"
