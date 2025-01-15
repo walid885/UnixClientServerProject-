@@ -54,7 +54,7 @@ void read_file_content(char *buffer, const char *filename) {
 
 int authenticate(const char *username, const char *password) {
     // Simple authentication (in practice, use secure storage)
-    return (strcmp(username, "admin") == 0 && strcmp(password, "password") == 0);
+    return (strcmp(username, "admin") == 0 && strcmp(password, "admin") == 0);
 }
 
 int main() {

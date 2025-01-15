@@ -18,7 +18,7 @@ spawn ./client
 expect "Username: "
 send "admin\r"
 expect "Password: "
-send "password\r"
+send "admin\r"
 expect "Choose service"
 send "1\r"
 expect "Choose service"
@@ -35,7 +35,7 @@ spawn ./client
 expect "Username: "
 send "admin\r"
 expect "Password: "
-send "password\r"
+send "admin\r"
 expect "Choose service"
 send "2\r"
 expect "Choose service"
@@ -52,9 +52,13 @@ spawn ./client
 expect "Username: "
 send "admin\r"
 expect "Password: "
-send "password\r"
+send "admin\r"
 expect "Choose service"
+sleep 3
+
 send "4\r"
+
+
 expect "Choose service"
 send "5\r"
 expect eof
