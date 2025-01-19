@@ -12,6 +12,6 @@ serveurUDP: UdpServer.c
 	$(CC) $(CFLAGS) -o serveurUDP UdpServer.c
 
 clean:
-	rm -f clientUDP serveurUDP
+	rm -f UdpServer UdpClient
 
 .PHONY: all clean
